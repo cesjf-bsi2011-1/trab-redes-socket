@@ -1,4 +1,4 @@
-trab-redes-socket
+Chat
 =================
 
-Socket em Java
+Trabalho da Disciplina de Redes do Professor Romualdo Costa - Socket em Java
