@@ -1,22 +1,26 @@
-package com.auadottoni.socket.server;
+package com.auadottoni.socket.client;
 
+import com.auadottoni.socket.server.*;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.SwingUtilities;
 
-public class ServerFrame extends javax.swing.JFrame {
+public class ClientFrame extends javax.swing.JFrame {
 
     /**
      * Creates new form ServerFrame
      */
-    public ServerFrame() {
+    public ClientFrame() {
         initComponents();
     }
-
+    
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -31,7 +35,7 @@ public class ServerFrame extends javax.swing.JFrame {
         chatTextArea = new javax.swing.JTextArea();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
-        setTitle("SERVER");
+        setTitle("CLIENT");
 
         userTextField.setEditable(false);
         userTextField.addActionListener(new java.awt.event.ActionListener() {
@@ -84,52 +88,46 @@ public class ServerFrame extends javax.swing.JFrame {
     private javax.swing.JTextField userTextField;
     // End of variables declaration//GEN-END:variables
 
-    private ServerSocket server;
-    private Socket connection;
+    private Socket client;
     private ObjectOutputStream output;
     private ObjectInputStream input;
     
     /**
-     * Passo 1: Criação de um ServerSocket
-     * Passo 2: Espera de uma conexão
-     * Passo 3: Obtenção de fluxos de E/S do Socket
-     * Passo 4: Realização do processamento
-     * Passo 5: Fechamento da conexão
+     * Passo 1: Criação de um Socket e conecta-se ao servidor
+     * Passo 2: Obtenção de fluxos de E/S do Socket
+     * Passo 3: Realização do processamento
+     * Passo 4: Fechamento da conexão
      */
-    public void runServer() {
+    public void runClient() {
         try {
-            //Criando um ServerSocket
-            server = new ServerSocket(5555);
-            while(true) {
-                try {
-                   //Esperando uma conexão
-                   waitForConnection();
-                   //Obtendo fluxos de E/S do Socket
-                   getStream();
-                   //Realizando o processamento
-                   whileChatting(); 
-                } catch(EOFException eofException) {
-                    showMessage(eofException.getMessage());
-                } catch (ClassNotFoundException ex) {
-                    showMessage(ex.getMessage());
-                } finally {
-                    //Fechando a conexão
-                    closeStreamsSockets();
-                }//fim finally
-            }//fim while
-        } catch (IOException ex) {
+            //Conectando ao Servidor
+            connectToServer();
+            //Obtendo fluxos de E/S do Socket
+            getStream();
+            //Realizando o processamento
+            whileChatting(); 
+         } catch(EOFException eofException) {
+             showMessage(eofException.getMessage());
+         } catch (ClassNotFoundException ex) {
+             showMessage(ex.getMessage());
+         } catch (IOException ex) {
             showMessage(ex.getMessage());
-        } //fim catch
-    }
+        } finally {
+            try {
+                //Fechando a conexão
+                closeStreamsSockets();
+            } catch (IOException ex) {
+                Logger.getLogger(ClientFrame.class.getName()).log(Level.SEVERE, null, ex);
+            }
+         }    }
 
     /**
-     * Esperando alguém se conectar na porta
+     * Criando um socket e conectando-se ao servidor
      * @throws IOException 
      */
-    private void waitForConnection() throws IOException {
-        showMessage("Esperando alguém se conectar...\n");
-        connection = server.accept(); //Thread interrompida até que um client se conecte
-        showMessage(connection.getInetAddress().getHostName() + " se conectou!");
+    private void connectToServer() throws IOException {
+        client = new Socket(InetAddress.getByName("127.0.0.1"), 5555);
+        showMessage("Você se conectou ao :" + client.getInetAddress().getHostName());
         ableToType(true);
     }
 
@@ -138,13 +136,9 @@ public class ServerFrame extends javax.swing.JFrame {
      * @throws IOException 
      */
     private void getStream() throws IOException {
-       output = new ObjectOutputStream(connection.getOutputStream());
-       /*FLUSH - Enviando um cabeçalho de fluxo para o ObjectInputStream correspondente
-        *no client. Isso faz com que o ObjectInputStream do client se prepare para
-        *receber dados corretamente e o ObjectOutputStream do servidor seja esvaziado.
-       */
+       output = new ObjectOutputStream(client.getOutputStream());
        output.flush();
-       input = new ObjectInputStream(connection.getInputStream());
+       input = new ObjectInputStream(client.getInputStream());
     }
     
     /**
@@ -156,9 +150,9 @@ public class ServerFrame extends javax.swing.JFrame {
         String messageReceived;
         do {
             messageReceived = (String) input.readObject();
-            showMessage(connection.getInetAddress().getHostName() + ": " 
+            showMessage(client.getInetAddress().getHostName() + ": " 
                     + messageReceived + "\n");
-        } while(!messageReceived.equals("CLIENT_END"));
+        } while(!messageReceived.equals("SERVER_END"));
     }
     
     /**
@@ -209,7 +203,7 @@ public class ServerFrame extends javax.swing.JFrame {
         showMessage("Encerrando conexões...");
         output.close();
         input.close();
-        connection.close();
+        client.close();
         showMessage("Conexões encerradas.");
         ableToType(false);
     }
